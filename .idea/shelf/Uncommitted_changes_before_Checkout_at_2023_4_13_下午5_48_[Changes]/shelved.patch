@@ -1,0 +1,710 @@
+Index: fill_anything.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import cv2\nimport sys\nimport argparse\nimport numpy as np\nimport torch\nfrom pathlib import Path\nfrom matplotlib import pyplot as plt\nfrom typing import Any, Dict, List\n\nfrom sam_segment import predict_masks_with_sam\nfrom stable_diffusion_inpaint import inpaint_img_with_sd\nfrom utils import load_img_to_array, save_array_to_img, dilate_mask, \\\n    show_mask, show_points\n\n\ndef setup_args(parser):\n    parser.add_argument(\n        \"--input_img\", type=str, required=True,\n        help=\"Path to a single input img\",\n    )\n    parser.add_argument(\n        \"--point_coords\", type=float, nargs='+', required=True,\n        help=\"The coordinate of the point prompt, [coord_W coord_H].\",\n    )\n    parser.add_argument(\n        \"--point_labels\", type=int, nargs='+', required=True,\n        help=\"The labels of the point prompt, 1 or 0.\",\n    )\n    parser.add_argument(\n        \"--text_prompt\", type=str, required=True,\n        help=\"Text prompt\",\n    )\n    parser.add_argument(\n        \"--dilate_kernel_size\", type=int, default=None,\n        help=\"Dilate kernel size. Default: None\",\n    )\n    parser.add_argument(\n        \"--output_dir\", type=str, required=True,\n        help=\"Output path to the directory with results.\",\n    )\n    parser.add_argument(\n        \"--sam_model_type\", type=str,\n        default=\"vit_h\", choices=['vit_h', 'vit_l', 'vit_b'],\n        help=\"The type of sam model to load. Default: 'vit_h\"\n    )\n    parser.add_argument(\n        \"--sam_ckpt\", type=str, required=True,\n        help=\"The path to the SAM checkpoint to use for mask generation.\",\n    )\n    parser.add_argument(\n        \"--seed\", type=int,\n        help=\"Specify seed for reproducibility.\",\n    )\n    parser.add_argument(\n        \"--deterministic\", action=\"store_true\",\n        help=\"Use deterministic algorithms for reproducibility.\",\n    )\n\n\n\nif __name__ == \"__main__\":\n    \"\"\"Example usage:\n    python remove_anything.py \\\n        --input_img FA_demo/FA1_dog.png \\\n        --point_coords 750 500 \\\n        --point_labels 1 \\\n        --text_prompt \"a teddy bear on a bench\" \\\n        --dilate_kernel_size 15 \\\n        --output_dir ./results \\\n        --sam_model_type \"vit_h\" \\\n        --sam_ckpt sam_vit_h_4b8939.pth \n    \"\"\"\n    parser = argparse.ArgumentParser()\n    setup_args(parser)\n    args = parser.parse_args(sys.argv[1:])\n\n    img = load_img_to_array(args.input_img)\n\n    masks, _, _ = predict_masks_with_sam(\n        img,\n        [args.point_coords],\n        args.point_labels,\n        model_type=args.sam_model_type,\n        ckpt_p=args.sam_ckpt,\n        device=\"cuda\",\n    )\n    masks = masks.astype(np.uint8) * 255\n\n    # dilate mask to avoid unmasked edge effect\n    if args.dilate_kernel_size is not None:\n        masks = [dilate_mask(mask, args.dilate_kernel_size) for mask in masks]\n\n    # visualize the segmentation results\n    img_stem = Path(args.input_img).stem\n    out_dir = Path(args.output_dir) / img_stem\n    out_dir.mkdir(parents=True, exist_ok=True)\n    for idx, mask in enumerate(masks):\n        # path to the results\n        mask_p = out_dir / f\"mask_{idx}.png\"\n        img_points_p = out_dir / f\"with_points.png\"\n        img_mask_p = out_dir / f\"with_{Path(mask_p).name}\"\n\n        # save the mask\n        save_array_to_img(mask, mask_p)\n\n        # save the pointed and masked image\n        dpi = plt.rcParams['figure.dpi']\n        height, width = img.shape[:2]\n        plt.figure(figsize=(width/dpi/0.77, height/dpi/0.77))\n        plt.imshow(img)\n        plt.axis('off')\n        show_points(plt.gca(), [args.point_coords], args.point_labels,\n                    size=(width*0.04)**2)\n        plt.savefig(img_points_p, bbox_inches='tight', pad_inches=0)\n        show_mask(plt.gca(), mask, random_color=False)\n        plt.savefig(img_mask_p, bbox_inches='tight', pad_inches=0)\n        plt.close()\n\n    # fill the masked image\n    for idx, mask in enumerate(masks):\n        if args.seed is not None:\n            torch.manual_seed(args.seed)\n        mask_p = out_dir / f\"mask_{idx}.png\"\n        img_filled_p = out_dir / f\"filled_with_{Path(mask_p).name}\"\n        img_filled = inpaint_img_with_sd(img, mask, args.text_prompt)\n        save_array_to_img(img_filled, img_filled_p)
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/fill_anything.py b/fill_anything.py
+--- a/fill_anything.py	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/fill_anything.py	(date 1681379204910)
+@@ -2,15 +2,38 @@
+ import sys
+ import argparse
+ import numpy as np
+-import torch
++from PIL import Image
+ from pathlib import Path
+ from matplotlib import pyplot as plt
+ from typing import Any, Dict, List
+ 
+-from sam_segment import predict_masks_with_sam
+-from stable_diffusion_inpaint import inpaint_img_with_sd
+-from utils import load_img_to_array, save_array_to_img, dilate_mask, \
+-    show_mask, show_points
++from segment_anything import SamPredictor, sam_model_registry
++from lama_inpaint import inpaint_img_with_lama
++from visual_mask_on_img import show_mask, show_points
++from utils import load_img_to_array, save_array_to_img, dilate_mask
++
++
++def predict_masks_with_sam(
++        img: np.ndarray,
++        point_coords: List[List[float]],
++        point_labels: List[int],
++        model_type: str,
++        ckpt_p: str,
++        device="cuda"
++):
++    point_coords = np.array(point_coords)
++    point_labels = np.array(point_labels)
++    sam = sam_model_registry[model_type](checkpoint=ckpt_p)
++    sam.to(device=device)
++    predictor = SamPredictor(sam)
++
++    predictor.set_image(img)
++    masks, scores, logits = predictor.predict(
++        point_coords=point_coords,
++        point_labels=point_labels,
++        multimask_output=True,
++    )
++    return masks, scores, logits
+ 
+ 
+ def setup_args(parser):
+@@ -26,10 +49,6 @@
+         "--point_labels", type=int, nargs='+', required=True,
+         help="The labels of the point prompt, 1 or 0.",
+     )
+-    parser.add_argument(
+-        "--text_prompt", type=str, required=True,
+-        help="Text prompt",
+-    )
+     parser.add_argument(
+         "--dilate_kernel_size", type=int, default=None,
+         help="Dilate kernel size. Default: None",
+@@ -48,33 +67,34 @@
+         help="The path to the SAM checkpoint to use for mask generation.",
+     )
+     parser.add_argument(
+-        "--seed", type=int,
+-        help="Specify seed for reproducibility.",
++        "--lama_config", type=str,
++        default="./lama/configs/prediction/default.yaml",
++        help="The path to the config file of lama model. "
++             "Default: the config of big-lama",
+     )
+     parser.add_argument(
+-        "--deterministic", action="store_true",
+-        help="Use deterministic algorithms for reproducibility.",
++        "--lama_ckpt", type=str, required=True,
++        help="The path to the lama checkpoint.",
+     )
+-
+ 
+ 
+ if __name__ == "__main__":
+     """Example usage:
+-    python remove_anything.py \
++    python fill_anything.py \
+         --input_img FA_demo/FA1_dog.png \
+         --point_coords 750 500 \
+         --point_labels 1 \
+-        --text_prompt "a teddy bear on a bench" \
+         --dilate_kernel_size 15 \
+         --output_dir ./results \
+         --sam_model_type "vit_h" \
+-        --sam_ckpt sam_vit_h_4b8939.pth 
++        --sam_ckpt sam_vit_h_4b8939.pth \
+     """
+     parser = argparse.ArgumentParser()
+     setup_args(parser)
+     args = parser.parse_args(sys.argv[1:])
+ 
+     img = load_img_to_array(args.input_img)
++    img_stem = Path(args.input_img).stem
+ 
+     masks, _, _ = predict_masks_with_sam(
+         img,
+@@ -84,24 +104,23 @@
+         ckpt_p=args.sam_ckpt,
+         device="cuda",
+     )
+-    masks = masks.astype(np.uint8) * 255
++    masks = masks.astype(np.uint8)
+ 
+     # dilate mask to avoid unmasked edge effect
+     if args.dilate_kernel_size is not None:
+         masks = [dilate_mask(mask, args.dilate_kernel_size) for mask in masks]
+ 
+     # visualize the segmentation results
+-    img_stem = Path(args.input_img).stem
+     out_dir = Path(args.output_dir) / img_stem
+     out_dir.mkdir(parents=True, exist_ok=True)
+     for idx, mask in enumerate(masks):
+         # path to the results
++        img_points_p = out_dir / f"with_points.png"
++        img_mask_p = out_dir / f"with_mask_{idx}.png"
+         mask_p = out_dir / f"mask_{idx}.png"
+-        img_points_p = out_dir / f"with_points.png"
+-        img_mask_p = out_dir / f"with_{Path(mask_p).name}"
+ 
+         # save the mask
+-        save_array_to_img(mask, mask_p)
++        save_array_to_img(mask*255, mask_p)
+ 
+         # save the pointed and masked image
+         dpi = plt.rcParams['figure.dpi']
+@@ -116,11 +135,7 @@
+         plt.savefig(img_mask_p, bbox_inches='tight', pad_inches=0)
+         plt.close()
+ 
+-    # fill the masked image
+-    for idx, mask in enumerate(masks):
+-        if args.seed is not None:
+-            torch.manual_seed(args.seed)
+-        mask_p = out_dir / f"mask_{idx}.png"
+-        img_filled_p = out_dir / f"filled_with_{Path(mask_p).name}"
+-        img_filled = inpaint_img_with_sd(img, mask, args.text_prompt)
+-        save_array_to_img(img_filled, img_filled_p)
+\ No newline at end of file
++
++    # crop image to 512x512
++
++    # stable diffusion
+Index: example/fill-anything/points_coords.yaml
+===================================================================
+diff --git a/example/fill-anything/points_coords.yaml b/example/fill-anything/points_coords.yaml
+deleted file mode 100644
+--- a/example/fill-anything/points_coords.yaml	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ /dev/null	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
+@@ -1,5 +0,0 @@
+-sample1: [750, 500]
+-sample2: [200, 240]
+-sample3: [600, 600]
+-sample4: [250, 240]
+-sample5: [627, 845]
+Index: example/fill-anything/text_prompt.yaml
+===================================================================
+diff --git a/example/fill-anything/text_prompt.yaml b/example/fill-anything/text_prompt.yaml
+deleted file mode 100644
+--- a/example/fill-anything/text_prompt.yaml	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ /dev/null	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
+@@ -1,4 +0,0 @@
+-sample1: a teddy bear on a bench
+-sample2: a camera lens in the hand
+-sample3: an aircraft carrier on the sea
+-sample4: a sports car on a road
+Index: remove_anything.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import torch\nimport sys\nimport argparse\nimport numpy as np\nfrom pathlib import Path\nfrom matplotlib import pyplot as plt\n\nfrom sam_segment import predict_masks_with_sam\nfrom lama_inpaint import inpaint_img_with_lama\nfrom utils import load_img_to_array, save_array_to_img, dilate_mask, \\\n    show_mask, show_points\n\n\ndef setup_args(parser):\n    parser.add_argument(\n        \"--input_img\", type=str, required=True,\n        help=\"Path to a single input img\",\n    )\n    parser.add_argument(\n        \"--point_coords\", type=float, nargs='+', required=True,\n        help=\"The coordinate of the point prompt, [coord_W coord_H].\",\n    )\n    parser.add_argument(\n        \"--point_labels\", type=int, nargs='+', required=True,\n        help=\"The labels of the point prompt, 1 or 0.\",\n    )\n    parser.add_argument(\n        \"--dilate_kernel_size\", type=int, default=None,\n        help=\"Dilate kernel size. Default: None\",\n    )\n    parser.add_argument(\n        \"--output_dir\", type=str, required=True,\n        help=\"Output path to the directory with results.\",\n    )\n    parser.add_argument(\n        \"--sam_model_type\", type=str,\n        default=\"vit_h\", choices=['vit_h', 'vit_l', 'vit_b'],\n        help=\"The type of sam model to load. Default: 'vit_h\"\n    )\n    parser.add_argument(\n        \"--sam_ckpt\", type=str, required=True,\n        help=\"The path to the SAM checkpoint to use for mask generation.\",\n    )\n    parser.add_argument(\n        \"--lama_config\", type=str,\n        default=\"./lama/configs/prediction/default.yaml\",\n        help=\"The path to the config file of lama model. \"\n             \"Default: the config of big-lama\",\n    )\n    parser.add_argument(\n        \"--lama_ckpt\", type=str, required=True,\n        help=\"The path to the lama checkpoint.\",\n    )\n\n\nif __name__ == \"__main__\":\n    \"\"\"Example usage:\n    python remove_anything.py \\\n        --input_img FA_demo/FA1_dog.png \\\n        --point_coords 750 500 \\\n        --point_labels 1 \\\n        --dilate_kernel_size 15 \\\n        --output_dir ./results \\\n        --sam_model_type \"vit_h\" \\\n        --sam_ckpt sam_vit_h_4b8939.pth \\\n        --lama_config lama/configs/prediction/default.yaml \\\n        --lama_ckpt big-lama \n    \"\"\"\n    parser = argparse.ArgumentParser()\n    setup_args(parser)\n    args = parser.parse_args(sys.argv[1:])\n\n    img = load_img_to_array(args.input_img)\n\n    masks, _, _ = predict_masks_with_sam(\n        img,\n        [args.point_coords],\n        args.point_labels,\n        model_type=args.sam_model_type,\n        ckpt_p=args.sam_ckpt,\n        device=\"cuda\",\n    )\n    masks = masks.astype(np.uint8) * 255\n\n    # dilate mask to avoid unmasked edge effect\n    if args.dilate_kernel_size is not None:\n        masks = [dilate_mask(mask, args.dilate_kernel_size) for mask in masks]\n\n    # visualize the segmentation results\n    img_stem = Path(args.input_img).stem\n    out_dir = Path(args.output_dir) / img_stem\n    out_dir.mkdir(parents=True, exist_ok=True)\n    for idx, mask in enumerate(masks):\n        # path to the results\n        mask_p = out_dir / f\"mask_{idx}.png\"\n        img_points_p = out_dir / f\"with_points.png\"\n        img_mask_p = out_dir / f\"with_{Path(mask_p).name}\"\n\n        # save the mask\n        save_array_to_img(mask, mask_p)\n\n        # save the pointed and masked image\n        dpi = plt.rcParams['figure.dpi']\n        height, width = img.shape[:2]\n        plt.figure(figsize=(width/dpi/0.77, height/dpi/0.77))\n        plt.imshow(img)\n        plt.axis('off')\n        show_points(plt.gca(), [args.point_coords], args.point_labels,\n                    size=(width*0.04)**2)\n        plt.savefig(img_points_p, bbox_inches='tight', pad_inches=0)\n        show_mask(plt.gca(), mask, random_color=False)\n        plt.savefig(img_mask_p, bbox_inches='tight', pad_inches=0)\n        plt.close()\n\n    # inpaint the masked image\n    for idx, mask in enumerate(masks):\n        mask_p = out_dir / f\"mask_{idx}.png\"\n        img_inpainted_p = out_dir / f\"inpainted_with_{Path(mask_p).name}\"\n        img_inpainted = inpaint_img_with_lama(\n            img, mask, args.lama_config, args.lama_ckpt)\n        save_array_to_img(img_inpainted, img_inpainted_p)\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/remove_anything.py b/remove_anything.py
+--- a/remove_anything.py	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/remove_anything.py	(date 1681379204910)
+@@ -1,9 +1,11 @@
+-import torch
++import cv2
+ import sys
+ import argparse
+ import numpy as np
++from PIL import Image
+ from pathlib import Path
+ from matplotlib import pyplot as plt
++from typing import Any, Dict, List
+ 
+ from sam_segment import predict_masks_with_sam
+ from lama_inpaint import inpaint_img_with_lama
+@@ -71,6 +73,7 @@
+     args = parser.parse_args(sys.argv[1:])
+ 
+     img = load_img_to_array(args.input_img)
++    img_stem = Path(args.input_img).stem
+ 
+     masks, _, _ = predict_masks_with_sam(
+         img,
+@@ -80,14 +83,13 @@
+         ckpt_p=args.sam_ckpt,
+         device="cuda",
+     )
+-    masks = masks.astype(np.uint8) * 255
++    masks = masks.astype(np.uint8)
+ 
+     # dilate mask to avoid unmasked edge effect
+     if args.dilate_kernel_size is not None:
+         masks = [dilate_mask(mask, args.dilate_kernel_size) for mask in masks]
+ 
+     # visualize the segmentation results
+-    img_stem = Path(args.input_img).stem
+     out_dir = Path(args.output_dir) / img_stem
+     out_dir.mkdir(parents=True, exist_ok=True)
+     for idx, mask in enumerate(masks):
+@@ -97,7 +99,7 @@
+         img_mask_p = out_dir / f"with_{Path(mask_p).name}"
+ 
+         # save the mask
+-        save_array_to_img(mask, mask_p)
++        save_array_to_img(mask*255, mask_p)
+ 
+         # save the pointed and masked image
+         dpi = plt.rcParams['figure.dpi']
+@@ -112,10 +114,10 @@
+         plt.savefig(img_mask_p, bbox_inches='tight', pad_inches=0)
+         plt.close()
+ 
++
+     # inpaint the masked image
+     for idx, mask in enumerate(masks):
+-        mask_p = out_dir / f"mask_{idx}.png"
+-        img_inpainted_p = out_dir / f"inpainted_with_{Path(mask_p).name}"
++        img_inpainted_p = out_dir/ f"inpainted_with_mask_{idx}.png"
+         img_inpainted = inpaint_img_with_lama(
+             img, mask, args.lama_config, args.lama_ckpt)
+-        save_array_to_img(img_inpainted, img_inpainted_p)
++        save_array_to_img(img_inpainted, img_inpainted_p)
+\ No newline at end of file
+Index: sam_segment.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import sys\nimport argparse\nimport numpy as np\nfrom pathlib import Path\nfrom matplotlib import pyplot as plt\nfrom typing import Any, Dict, List\n\nfrom segment_anything import SamPredictor, sam_model_registry\nfrom utils import load_img_to_array, save_array_to_img, dilate_mask, \\\n    show_mask, show_points\n\n\ndef predict_masks_with_sam(\n        img: np.ndarray,\n        point_coords: List[List[float]],\n        point_labels: List[int],\n        model_type: str,\n        ckpt_p: str,\n        device=\"cuda\"\n):\n    point_coords = np.array(point_coords)\n    point_labels = np.array(point_labels)\n    sam = sam_model_registry[model_type](checkpoint=ckpt_p)\n    sam.to(device=device)\n    predictor = SamPredictor(sam)\n\n    predictor.set_image(img)\n    masks, scores, logits = predictor.predict(\n        point_coords=point_coords,\n        point_labels=point_labels,\n        multimask_output=True,\n    )\n    return masks, scores, logits\n\n\ndef setup_args(parser):\n    parser.add_argument(\n        \"--input_img\", type=str, required=True,\n        help=\"Path to a single input img\",\n    )\n    parser.add_argument(\n        \"--point_coords\", type=float, nargs='+', required=True,\n        help=\"The coordinate of the point prompt, [coord_W coord_H].\",\n    )\n    parser.add_argument(\n        \"--point_labels\", type=int, nargs='+', required=True,\n        help=\"The labels of the point prompt, 1 or 0.\",\n    )\n    parser.add_argument(\n        \"--dilate_kernel_size\", type=int, default=None,\n        help=\"Dilate kernel size. Default: None\",\n    )\n    parser.add_argument(\n        \"--output_dir\", type=str, required=True,\n        help=\"Output path to the directory with results.\",\n    )\n    parser.add_argument(\n        \"--sam_model_type\", type=str,\n        default=\"vit_h\", choices=['vit_h', 'vit_l', 'vit_b'],\n        help=\"The type of sam model to load. Default: 'vit_h\"\n    )\n    parser.add_argument(\n        \"--sam_ckpt\", type=str, required=True,\n        help=\"The path to the SAM checkpoint to use for mask generation.\",\n    )\n\n\nif __name__ == \"__main__\":\n    \"\"\"Example usage:\n    python sam_segment.py \\\n        --input_img FA_demo/FA1_dog.png \\\n        --point_coords 750 500 \\\n        --point_labels 1 \\\n        --dilate_kernel_size 15 \\\n        --output_dir ./results \\\n        --sam_model_type \"vit_h\" \\\n        --sam_ckpt sam_vit_h_4b8939.pth\n    \"\"\"\n    parser = argparse.ArgumentParser()\n    setup_args(parser)\n    args = parser.parse_args(sys.argv[1:])\n\n    img = load_img_to_array(args.input_img)\n\n    masks, _, _ = predict_masks_with_sam(\n        img,\n        [args.point_coords],\n        args.point_labels,\n        model_type=args.sam_model_type,\n        ckpt_p=args.sam_ckpt,\n        device=\"cuda\",\n    )\n    masks = masks.astype(np.uint8) * 255\n\n    # dilate mask to avoid unmasked edge effect\n    if args.dilate_kernel_size is not None:\n        masks = [dilate_mask(mask, args.dilate_kernel_size) for mask in masks]\n\n    # visualize the segmentation results\n    img_stem = Path(args.input_img).stem\n    out_dir = Path(args.output_dir) / img_stem\n    out_dir.mkdir(parents=True, exist_ok=True)\n    for idx, mask in enumerate(masks):\n        # path to the results\n        img_points_p = out_dir / f\"with_points.png\"\n        img_mask_p = out_dir / f\"with_mask_{idx}.png\"\n        mask_p = out_dir / f\"mask_{idx}.png\"\n\n        # save the mask\n        save_array_to_img(mask, mask_p)\n\n        # save the pointed and masked image\n        dpi = plt.rcParams['figure.dpi']\n        height, width = img.shape[:2]\n        plt.figure(figsize=(width/dpi/0.77, height/dpi/0.77))\n        plt.imshow(img)\n        plt.axis('off')\n        show_points(plt.gca(), [args.point_coords], args.point_labels,\n                    size=(width*0.04)**2)\n        plt.savefig(img_points_p, bbox_inches='tight', pad_inches=0)\n        show_mask(plt.gca(), mask, random_color=False)\n        plt.savefig(img_mask_p, bbox_inches='tight', pad_inches=0)\n        plt.close()
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/sam_segment.py b/sam_segment.py
+--- a/sam_segment.py	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/sam_segment.py	(date 1681379204910)
+@@ -6,8 +6,8 @@
+ from typing import Any, Dict, List
+ 
+ from segment_anything import SamPredictor, sam_model_registry
+-from utils import load_img_to_array, save_array_to_img, dilate_mask, \
+-    show_mask, show_points
++from visual_mask_on_img import show_mask, show_points
++from utils import load_img_to_array, save_array_to_img, dilate_mask
+ 
+ 
+ def predict_masks_with_sam(
+@@ -81,6 +81,7 @@
+     args = parser.parse_args(sys.argv[1:])
+ 
+     img = load_img_to_array(args.input_img)
++    img_stem = Path(args.input_img).stem
+ 
+     masks, _, _ = predict_masks_with_sam(
+         img,
+@@ -90,14 +91,13 @@
+         ckpt_p=args.sam_ckpt,
+         device="cuda",
+     )
+-    masks = masks.astype(np.uint8) * 255
++    masks = masks.astype(np.uint8)
+ 
+     # dilate mask to avoid unmasked edge effect
+     if args.dilate_kernel_size is not None:
+         masks = [dilate_mask(mask, args.dilate_kernel_size) for mask in masks]
+ 
+     # visualize the segmentation results
+-    img_stem = Path(args.input_img).stem
+     out_dir = Path(args.output_dir) / img_stem
+     out_dir.mkdir(parents=True, exist_ok=True)
+     for idx, mask in enumerate(masks):
+@@ -107,7 +107,7 @@
+         mask_p = out_dir / f"mask_{idx}.png"
+ 
+         # save the mask
+-        save_array_to_img(mask, mask_p)
++        save_array_to_img(mask*255, mask_p)
+ 
+         # save the pointed and masked image
+         dpi = plt.rcParams['figure.dpi']
+Index: utils/utils.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import cv2\nimport numpy as np\nfrom PIL import Image\nfrom typing import Any, Dict, List\n\n\ndef load_img_to_array(img_p):\n    return np.array(Image.open(img_p))\n\n\ndef save_array_to_img(img_arr, img_p):\n    Image.fromarray(img_arr.astype(np.uint8)).save(img_p)\n\n\ndef dilate_mask(mask, dilate_factor=15):\n    mask = mask.astype(np.uint8)\n    mask = cv2.dilate(\n        mask,\n        np.ones((dilate_factor, dilate_factor), np.uint8),\n        iterations=1\n    )\n    return mask\n\ndef show_mask(ax, mask: np.ndarray, random_color=False):\n    mask = mask.astype(np.uint8)\n    if np.max(mask) == 255:\n        mask = mask / 255\n    if random_color:\n        color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)\n    else:\n        color = np.array([30 / 255, 144 / 255, 255 / 255, 0.6])\n    h, w = mask.shape[-2:]\n    mask_img = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)\n    ax.imshow(mask_img)\n\n\ndef show_points(ax, coords: List[List[float]], labels: List[int], size=375):\n    coords = np.array(coords)\n    labels = np.array(labels)\n    color_table = {0: 'red', 1: 'green'}\n    for label_value, color in color_table.items():\n        points = coords[labels == label_value]\n        ax.scatter(points[:, 0], points[:, 1], color=color, marker='*',\n                   s=size, edgecolor='white', linewidth=1.25)
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/utils/utils.py b/utils/utils.py
+--- a/utils/utils.py	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/utils/utils.py	(date 1681379204910)
+@@ -13,16 +13,17 @@
+ 
+ 
+ def dilate_mask(mask, dilate_factor=15):
+-    mask = mask.astype(np.uint8)
++    if np.max(mask) == 1:
++        mask = (mask * 255).astype(np.uint8)
+     mask = cv2.dilate(
+         mask,
+         np.ones((dilate_factor, dilate_factor), np.uint8),
+         iterations=1
+     )
++    mask = (mask / 255).astype(np.bool_)
+     return mask
+ 
+-def show_mask(ax, mask: np.ndarray, random_color=False):
+-    mask = mask.astype(np.uint8)
++def show_mask(ax, mask, random_color=False):
+     if np.max(mask) == 255:
+         mask = mask / 255
+     if random_color:
+Index: README.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><p align=\"center\">\n  <img src=\"./example/IAM.png\">\n</p>\n\n# Inpaint Anything: Segment Anything Meets Image Inpainting\n<p align=\"center\">\n  <img src=\"./example/framework.png\" width=\"100%\">\n</p>\n\n\n\n## Inpaint Anything Features\n- [x] **Remove** Anything\n- [x] **Fill** Anything\n- [ ] **Replace** Anything (coming soon)\n- [ ] Demo Website (coming soon)\n\n<!-- ## Updates\n| Date | News |\n| ------ | --------\n| 2023-04-12 | Release the Fill Anything feature | \n| 2023-04-10 | Release the Remove Anything feature |\n| 2023-04-10 | Release the first version of Inpaint Anything | -->\n\n## Remove Anything\n\n\n<table>\n  <tr>\n    <td><img src=\"./example/remove-anything/dog/with_points.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/dog/with_mask.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/dog/inpainted_with_mask.png\" width=\"100%\"></td>\n  </tr>\n</table>\n\n**Click** on an object in the image (2K image supported!), and Inpainting Anything will **remove** it instantly!\n- Click on an object;\n- [Segment Anything Model](https://segment-anything.com/) (SAM) segments the object out;\n- Inpainting models (e.g., [LaMa](https://advimman.github.io/lama-project/)) fill the \"hole\".\n\n### Installation\nRequires `python>=3.8`\n```bash\npython -m pip install torch torchvision torchaudio\npython -m pip install -e segment_anything\npython -m pip install -r lama/requirements.txt \n```\n\n### Usage\nSpecify an image and a point, and Inpaint-Anything will remove the object at the point.\n```bash\npython remove_anything.py \\\n    --input_img ./example/remove-anything/dog.jpg \\\n    --point_coords 200 450 \\\n    --point_labels 1 \\\n    --dilate_kernel_size 15 \\\n    --output_dir ./results \\\n    --sam_model_type \"vit_h\" \\\n    --sam_ckpt sam_vit_h_4b8939.pth \\\n    --lama_config ./lama/configs/prediction/default.yaml \\\n    --lama_ckpt big-lama\n```\n\n### Demo\n<table>\n  <tr>\n    <td><img src=\"./example/remove-anything/person/with_points.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/person/with_mask.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/person/inpainted_with_mask.png\" width=\"100%\"></td>\n  </tr>\n</table>\n\n<table>\n  <tr>\n    <td><img src=\"./example/remove-anything/bridge/with_points.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/bridge/with_mask.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/bridge/inpainted_with_mask.png\" width=\"100%\"></td>\n  </tr>\n</table>\n\n<table>\n  <tr>\n    <td><img src=\"./example/remove-anything/boat/with_points.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/boat/with_mask.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/boat/inpainted_with_mask.png\" width=\"100%\"></td>\n  </tr>\n</table>\n\n<table>\n  <tr>\n    <td><img src=\"./example/remove-anything/baseball/with_points.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/baseball/with_mask.png\" width=\"100%\"></td>\n    <td><img src=\"./example/remove-anything/baseball/inpainted_with_mask.png\" width=\"100%\"></td>\n  </tr>\n</table>\n\n\n\n## Fill Anything\n\n<table>\n  <caption style=\"text-align: center;\">Text prompt: \"a teddy bear on a bench\"</caption>\n    <tr>\n      <td><img src=\"./example/fill-anything/sample1/with_points.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample1/with_mask.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample1/filled_with_mask.png\" width=\"100%\"></td>\n    </tr>\n</table>\n\n**Click** on an object, **type** in what you want to fill, and Inpaint Anything will **fill** it!\n- Click on an object;\n- [SAM](https://segment-anything.com/) segments the object out;\n- Input a text prompt;\n- Text-prompt-guided inpainting models (e.g., [Stable Diffusion](https://github.com/CompVis/stable-diffusion)) fill the \"hole\" according to the text.\n\n### Installation\nRequires `python>=3.8`\n```bash\npython -m pip install torch torchvision torchaudio\npython -m pip install -e segment_anything\npython -m pip install diffusers transformers accelerate scipy safetensors\n```\n\n### Usage\nSpecify an image, a point and text prompt, and run:\n```bash\npython fill_anything.py \\\n    --input_img ./example/fill-anything/sample1.png \\\n    --point_coords 750 500 \\\n    --point_labels 1 \\\n    --text_prompt \"a teddy bear on a bench\" \\\n    --dilate_kernel_size 50 \\\n    --output_dir ./results \\\n    --sam_model_type \"vit_h\" \\\n    --sam_ckpt sam_vit_h_4b8939.pth\n```\n\n### Demo\n\n\n<table>\n  <caption style=\"text-align: center;\">Text prompt: \"a camera lens in the hand\"</caption>\n    <tr>\n      <td><img src=\"./example/fill-anything/sample2/with_points.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample2/with_mask.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample2/filled_with_mask.png\" width=\"100%\"></td>\n    </tr>\n</table>\n\n<table>\n  <caption style=\"text-align: center;\">Text prompt: \"a Picasso painting on the wall\"</caption>\n    <tr>\n      <td><img src=\"./example/fill-anything/sample5/with_points.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample5/with_mask.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample5/filled_with_mask.png\" width=\"100%\"></td>\n    </tr>\n</table>\n\n<table>\n  <caption style=\"text-align: center;\">Text prompt: \"an aircraft carrier on the sea\"</caption>\n    <tr>\n      <td><img src=\"./example/fill-anything/sample3/with_points.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample3/with_mask.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample3/filled_with_mask.png\" width=\"100%\"></td>\n    </tr>\n</table>\n\n<table>\n  <caption style=\"text-align: center;\">Text prompt: \"a sports car on a road\"</caption>\n    <tr>\n      <td><img src=\"./example/fill-anything/sample4/with_points.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample4/with_mask.png\" width=\"100%\"></td>\n      <td><img src=\"./example/fill-anything/sample4/filled_with_mask.png\" width=\"100%\"></td>\n    </tr>\n</table>\n\n\n## Acknowledgments\n- [Segment Anything](https://github.com/facebookresearch/segment-anything)\n- [LaMa](https://github.com/advimman/lama)\n- [Stable Diffusion](https://github.com/CompVis/stable-diffusion)\n\n\n\n ## Other Interesting Repoepositories\n- [Awesome Anything](https://github.com/VainF/Awesome-Anything)\n- [Grounded SAM](https://github.com/IDEA-Research/Grounded-Segment-Anything)\n\n\n\n\n\n\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/README.md b/README.md
+--- a/README.md	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/README.md	(date 1681379204878)
+@@ -2,28 +2,25 @@
+   <img src="./example/IAM.png">
+ </p>
+ 
+-# Inpaint Anything: Segment Anything Meets Image Inpainting
++# Inpaint-Anything
++## Segment Anything Meets Image Inpainting
+ <p align="center">
+   <img src="./example/framework.png" width="100%">
+ </p>
+ 
+ 
+-
+ ## Inpaint Anything Features
+-- [x] **Remove** Anything
+-- [x] **Fill** Anything
+-- [ ] **Replace** Anything (coming soon)
++- [x] Remove Anything
++- [x] Fill Anything
++- [ ] Replace Anything (coming soon)
+ - [ ] Demo Website (coming soon)
+ 
+-<!-- ## Updates
+-| Date | News |
+-| ------ | --------
+-| 2023-04-12 | Release the Fill Anything feature | 
+-| 2023-04-10 | Release the Remove Anything feature |
+-| 2023-04-10 | Release the first version of Inpaint Anything | -->
+ 
+ ## Remove Anything
+-
++**Click** on an object in the image (2K image supported!), and Inpainting Anything will **remove** it instantly!
++- Click on an object;
++- [Segment Anything Model](https://segment-anything.com/) (SAM) segments the object out;
++- Inpainting models (e.g., [LaMa](https://advimman.github.io/lama-project/)) fill the "hole".
+ 
+ <table>
+   <tr>
+@@ -33,35 +30,6 @@
+   </tr>
+ </table>
+ 
+-**Click** on an object in the image (2K image supported!), and Inpainting Anything will **remove** it instantly!
+-- Click on an object;
+-- [Segment Anything Model](https://segment-anything.com/) (SAM) segments the object out;
+-- Inpainting models (e.g., [LaMa](https://advimman.github.io/lama-project/)) fill the "hole".
+-
+-### Installation
+-Requires `python>=3.8`
+-```bash
+-python -m pip install torch torchvision torchaudio
+-python -m pip install -e segment_anything
+-python -m pip install -r lama/requirements.txt 
+-```
+-
+-### Usage
+-Specify an image and a point, and Inpaint-Anything will remove the object at the point.
+-```bash
+-python remove_anything.py \
+-    --input_img ./example/remove-anything/dog.jpg \
+-    --point_coords 200 450 \
+-    --point_labels 1 \
+-    --dilate_kernel_size 15 \
+-    --output_dir ./results \
+-    --sam_model_type "vit_h" \
+-    --sam_ckpt sam_vit_h_4b8939.pth \
+-    --lama_config ./lama/configs/prediction/default.yaml \
+-    --lama_ckpt big-lama
+-```
+-
+-### Demo
+ <table>
+   <tr>
+     <td><img src="./example/remove-anything/person/with_points.png" width="100%"></td>
+@@ -94,83 +62,69 @@
+   </tr>
+ </table>
+ 
+-
+-
+-## Fill Anything
+-
+-<table>
+-  <caption style="text-align: center;">Text prompt: "a teddy bear on a bench"</caption>
+-    <tr>
+-      <td><img src="./example/fill-anything/sample1/with_points.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample1/with_mask.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample1/filled_with_mask.png" width="100%"></td>
+-    </tr>
+-</table>
+-
+-**Click** on an object, **type** in what you want to fill, and Inpaint Anything will **fill** it!
+-- Click on an object;
+-- [SAM](https://segment-anything.com/) segments the object out;
+-- Input a text prompt;
+-- Text-prompt-guided inpainting models (e.g., [Stable Diffusion](https://github.com/CompVis/stable-diffusion)) fill the "hole" according to the text.
+-
+ ### Installation
+ Requires `python>=3.8`
+ ```bash
+ python -m pip install torch torchvision torchaudio
+ python -m pip install -e segment_anything
+-python -m pip install diffusers transformers accelerate scipy safetensors
++python -m pip install -r lama/requirements.txt 
+ ```
+ 
+ ### Usage
+-Specify an image, a point and text prompt, and run:
++Specify an image and a point, and Inpaint-Anything will remove the object at the point.
+ ```bash
+-python fill_anything.py \
+-    --input_img ./example/fill-anything/sample1.png \
+-    --point_coords 750 500 \
++python remove_anything.py \
++    --input_img ./example/remove-anything/dog.jpg \
++    --point_coords 200 450 \
+     --point_labels 1 \
+-    --text_prompt "a teddy bear on a bench" \
+-    --dilate_kernel_size 50 \
++    --dilate_kernel_size 15 \
+     --output_dir ./results \
+     --sam_model_type "vit_h" \
+-    --sam_ckpt sam_vit_h_4b8939.pth
++    --sam_ckpt sam_vit_h_4b8939.pth \
++    --lama_config ./lama/configs/prediction/default.yaml \
++    --lama_ckpt big-lama
+ ```
+ 
+-### Demo
+-
++## Fill Anything
++**Click** on an object, **type** in what you want to fill, and Inpaint Anything will **fill** it!
++- Click on an object;
++- [SAM](https://segment-anything.com/) segments the object out;
++- Input a text prompt;
++- Text-prompt-guided inpainting models (e.g., [Stable Diffusion](https://github.com/CompVis/stable-diffusion)) fill the "hole" according to the text.
+ 
+ <table>
+-  <caption style="text-align: center;">Text prompt: "a camera lens in the hand"</caption>
++  <caption style="text-align: center;">Text prompt: "a teddy bear on a bench"</caption>
+     <tr>
+-      <td><img src="./example/fill-anything/sample2/with_points.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample2/with_mask.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample2/filled_with_mask.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample1_point.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample1_masked.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample1_result.png" width="100%"></td>
+     </tr>
+ </table>
+ 
+ <table>
+-  <caption style="text-align: center;">Text prompt: "a Picasso painting on the wall"</caption>
++  <caption style="text-align: center;">Text prompt: "a camera lens in the hand"</caption>
+     <tr>
+-      <td><img src="./example/fill-anything/sample5/with_points.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample5/with_mask.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample5/filled_with_mask.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample2_point.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample2_masked.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample2_result.png" width="100%"></td>
+     </tr>
+ </table>
+ 
+ <table>
+   <caption style="text-align: center;">Text prompt: "an aircraft carrier on the sea"</caption>
+     <tr>
+-      <td><img src="./example/fill-anything/sample3/with_points.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample3/with_mask.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample3/filled_with_mask.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample3_point.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample3_masked.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample3_result.png" width="100%"></td>
+     </tr>
+ </table>
+ 
+ <table>
+   <caption style="text-align: center;">Text prompt: "a sports car on a road"</caption>
+     <tr>
+-      <td><img src="./example/fill-anything/sample4/with_points.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample4/with_mask.png" width="100%"></td>
+-      <td><img src="./example/fill-anything/sample4/filled_with_mask.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample4_point.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample4_masked.png" width="100%"></td>
++      <td><img src="./example/fill-anything/sample4_result.png" width="100%"></td>
+     </tr>
+ </table>
+ 
+Index: stable_diffusion_inpaint.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import os\nimport sys\nimport glob\nimport argparse\nimport torch\nimport numpy as np\nimport PIL.Image as Image\nfrom pathlib import Path\nfrom diffusers import StableDiffusionInpaintPipeline\nfrom utils.mask_processing import crop_for_filling_pre, crop_for_filling_post\nfrom utils import load_img_to_array, save_array_to_img\n\n\ndef inpaint_img_with_sd(\n        img: np.ndarray,\n        mask: np.ndarray,\n        text_prompt: str,\n        device=\"cuda\"\n):\n    pipe = StableDiffusionInpaintPipeline.from_pretrained(\n        \"stabilityai/stable-diffusion-2-inpainting\",\n        torch_dtype=torch.float32,\n    ).to(device)\n    img_crop, mask_crop = crop_for_filling_pre(img, mask)\n    img_crop_filled = pipe(\n        prompt=text_prompt,\n        image=Image.fromarray(img_crop),\n        mask_image=Image.fromarray(mask_crop)\n    ).images[0]\n    img_filled = crop_for_filling_post(img, mask, np.array(img_crop_filled))\n    return img_filled\n\n\ndef setup_args(parser):\n    parser.add_argument(\n        \"--input_img\", type=str, required=True,\n        help=\"Path to a single input img\",\n    )\n    parser.add_argument(\n        \"--text_prompt\", type=str, required=True,\n        help=\"Text prompt\",\n    )\n    parser.add_argument(\n        \"--input_mask_glob\", type=str, required=True,\n        help=\"Glob to input masks\",\n    )\n    parser.add_argument(\n        \"--output_dir\", type=str, required=True,\n        help=\"Output path to the directory with results.\",\n    )\n    parser.add_argument(\n        \"--seed\", type=int,\n        help=\"Specify seed for reproducibility.\",\n    )\n    parser.add_argument(\n        \"--deterministic\", action=\"store_true\",\n        help=\"Use deterministic algorithms for reproducibility.\",\n    )\n\nif __name__ == \"__main__\":\n    \"\"\"Example usage:\n    python lama_inpaint.py \\\n        --input_img FA_demo/FA1_dog.png \\\n        --input_mask_glob \"results/FA1_dog/mask*.png\" \\\n        --text_prompt \"a teddy bear on a bench\" \\\n        --output_dir results \n    \"\"\"\n    parser = argparse.ArgumentParser()\n    setup_args(parser)\n    args = parser.parse_args(sys.argv[1:])\n\n    if args.deterministic:\n        os.environ[\"CUBLAS_WORKSPACE_CONFIG\"] = \":4096:8\"\n        torch.use_deterministic_algorithms(True)\n\n    img_stem = Path(args.input_img).stem\n    mask_ps = sorted(glob.glob(args.input_mask_glob))\n    out_dir = Path(args.output_dir) / img_stem\n    out_dir.mkdir(parents=True, exist_ok=True)\n\n    img = load_img_to_array(args.input_img)\n    for mask_p in mask_ps:\n        if args.seed is not None:\n            torch.manual_seed(args.seed)\n        mask = load_img_to_array(mask_p)\n        img_filled_p = out_dir / f\"filled_with_{Path(mask_p).name}\"\n        img_filled = inpaint_img_with_sd(img, mask, args.text_prompt)\n        save_array_to_img(img_filled, img_filled_p)
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/stable_diffusion_inpaint.py b/stable_diffusion_inpaint.py
+--- a/stable_diffusion_inpaint.py	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/stable_diffusion_inpaint.py	(date 1681379204910)
+@@ -1,88 +1,31 @@
+ import os
+-import sys
+-import glob
+-import argparse
++import cv2
+ import torch
+ import numpy as np
+ import PIL.Image as Image
+-from pathlib import Path
+ from diffusers import StableDiffusionInpaintPipeline
+ from utils.mask_processing import crop_for_filling_pre, crop_for_filling_post
+-from utils import load_img_to_array, save_array_to_img
+ 
+-
+-def inpaint_img_with_sd(
+-        img: np.ndarray,
+-        mask: np.ndarray,
+-        text_prompt: str,
+-        device="cuda"
+-):
+-    pipe = StableDiffusionInpaintPipeline.from_pretrained(
+-        "stabilityai/stable-diffusion-2-inpainting",
+-        torch_dtype=torch.float32,
+-    ).to(device)
+-    img_crop, mask_crop = crop_for_filling_pre(img, mask)
+-    img_crop_filled = pipe(
+-        prompt=text_prompt,
+-        image=Image.fromarray(img_crop),
+-        mask_image=Image.fromarray(mask_crop)
+-    ).images[0]
+-    img_filled = crop_for_filling_post(img, mask, np.array(img_crop_filled))
+-    return img_filled
+-
+-
+-def setup_args(parser):
+-    parser.add_argument(
+-        "--input_img", type=str, required=True,
+-        help="Path to a single input img",
+-    )
+-    parser.add_argument(
+-        "--text_prompt", type=str, required=True,
+-        help="Text prompt",
+-    )
+-    parser.add_argument(
+-        "--input_mask_glob", type=str, required=True,
+-        help="Glob to input masks",
+-    )
+-    parser.add_argument(
+-        "--output_dir", type=str, required=True,
+-        help="Output path to the directory with results.",
+-    )
+-    parser.add_argument(
+-        "--seed", type=int,
+-        help="Specify seed for reproducibility.",
+-    )
+-    parser.add_argument(
+-        "--deterministic", action="store_true",
+-        help="Use deterministic algorithms for reproducibility.",
+-    )
++pipe = StableDiffusionInpaintPipeline.from_pretrained(
++    "stabilityai/stable-diffusion-2-inpainting",
++    # torch_dtype=torch.float16,
++    torch_dtype=torch.float32,
++)
++pipe.to("cuda")
+ 
+-if __name__ == "__main__":
+-    """Example usage:
+-    python lama_inpaint.py \
+-        --input_img FA_demo/FA1_dog.png \
+-        --input_mask_glob "results/FA1_dog/mask*.png" \
+-        --text_prompt "a teddy bear on a bench" \
+-        --output_dir results 
+-    """
+-    parser = argparse.ArgumentParser()
+-    setup_args(parser)
+-    args = parser.parse_args(sys.argv[1:])
++prompt = "A cute cat on a bench, looking straight ahead, high quality"
++img_path = './with_points.png'
++mask_path = './mask_1.png'
++image = cv2.imread(img_path)
++image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
++mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
++cropped_image, cropped_mask = crop_for_filling_pre(image, mask)
++input_image = Image.fromarray(cropped_image)
++input_mask = Image.fromarray(cropped_mask)
++output_image = pipe(prompt=prompt, image=input_image, mask_image=input_mask).images[0]
++output_image = np.array(output_image)
++image = crop_for_filling_post(image, mask, output_image)
++image = Image.fromarray(image)
++image.save(os.path.splitext(img_path)[0] + '_result.png')
+ 
+-    if args.deterministic:
+-        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+-        torch.use_deterministic_algorithms(True)
+ 
+-    img_stem = Path(args.input_img).stem
+-    mask_ps = sorted(glob.glob(args.input_mask_glob))
+-    out_dir = Path(args.output_dir) / img_stem
+-    out_dir.mkdir(parents=True, exist_ok=True)
+-
+-    img = load_img_to_array(args.input_img)
+-    for mask_p in mask_ps:
+-        if args.seed is not None:
+-            torch.manual_seed(args.seed)
+-        mask = load_img_to_array(mask_p)
+-        img_filled_p = out_dir / f"filled_with_{Path(mask_p).name}"
+-        img_filled = inpaint_img_with_sd(img, mask, args.text_prompt)
+-        save_array_to_img(img_filled, img_filled_p)
+\ No newline at end of file
+Index: lama_inpaint.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import os\nimport sys\nimport numpy as np\nimport torch\nimport yaml\nimport glob\nimport argparse\nfrom PIL import Image\nfrom omegaconf import OmegaConf\nfrom pathlib import Path\n\nos.environ['OMP_NUM_THREADS'] = '1'\nos.environ['OPENBLAS_NUM_THREADS'] = '1'\nos.environ['MKL_NUM_THREADS'] = '1'\nos.environ['VECLIB_MAXIMUM_THREADS'] = '1'\nos.environ['NUMEXPR_NUM_THREADS'] = '1'\n\nsys.path.insert(0, str(Path(__file__).resolve().parent / \"lama\"))\nfrom saicinpainting.evaluation.utils import move_to_device\nfrom saicinpainting.training.trainers import load_checkpoint\nfrom saicinpainting.evaluation.data import pad_tensor_to_modulo\n\nfrom utils import load_img_to_array, save_array_to_img\n\n\n@torch.no_grad()\ndef inpaint_img_with_lama(\n        img: np.ndarray,\n        mask: np.ndarray,\n        config_p: str,\n        ckpt_p: str=\"./lama/configs/prediction/default.yaml\",\n        mod=8\n):\n    assert len(mask.shape) == 2\n    if np.max(mask) == 1:\n        mask = mask * 255\n    img = torch.from_numpy(img).float().div(255.)\n    mask = torch.from_numpy(mask).float()\n    predict_config = OmegaConf.load(config_p)\n    predict_config.model.path = ckpt_p\n    device = torch.device(predict_config.device)\n\n    train_config_path = os.path.join(\n        predict_config.model.path, 'config.yaml')\n\n    with open(train_config_path, 'r') as f:\n        train_config = OmegaConf.create(yaml.safe_load(f))\n\n    train_config.training_model.predict_only = True\n    train_config.visualizer.kind = 'noop'\n\n    checkpoint_path = os.path.join(\n        predict_config.model.path, 'models',\n        predict_config.model.checkpoint\n    )\n    model = load_checkpoint(\n        train_config, checkpoint_path, strict=False, map_location='cpu')\n    model.freeze()\n    if not predict_config.get('refine', False):\n        model.to(device)\n\n    batch = {}\n    batch['image'] = img.permute(2, 0, 1).unsqueeze(0)\n    batch['mask'] = mask[None, None]\n    unpad_to_size = [batch['image'].shape[2], batch['image'].shape[3]]\n    batch['image'] = pad_tensor_to_modulo(batch['image'], mod)\n    batch['mask'] = pad_tensor_to_modulo(batch['mask'], mod)\n    batch = move_to_device(batch, device)\n    batch['mask'] = (batch['mask'] > 0) * 1\n\n    batch = model(batch)\n    cur_res = batch[predict_config.out_key][0].permute(1, 2, 0)\n    cur_res = cur_res.detach().cpu().numpy()\n\n    if unpad_to_size is not None:\n        orig_height, orig_width = unpad_to_size\n        cur_res = cur_res[:orig_height, :orig_width]\n\n    cur_res = np.clip(cur_res * 255, 0, 255).astype('uint8')\n    return cur_res\n\ndef setup_args(parser):\n    parser.add_argument(\n        \"--input_img\", type=str, required=True,\n        help=\"Path to a single input img\",\n    )\n    parser.add_argument(\n        \"--input_mask_glob\", type=str, required=True,\n        help=\"Glob to input masks\",\n    )\n    parser.add_argument(\n        \"--output_dir\", type=str, required=True,\n        help=\"Output path to the directory with results.\",\n    )\n    parser.add_argument(\n        \"--lama_config\", type=str,\n        default=\"./lama/configs/prediction/default.yaml\",\n        help=\"The path to the config file of lama model. \"\n             \"Default: the config of big-lama\",\n    )\n    parser.add_argument(\n        \"--lama_ckpt\", type=str, required=True,\n        help=\"The path to the lama checkpoint.\",\n    )\n\n\nif __name__ == \"__main__\":\n    \"\"\"Example usage:\n    python lama_inpaint.py \\\n        --input_img FA_demo/FA1_dog.png \\\n        --input_mask_glob \"results/FA1_dog/mask*.png\" \\\n        --output_dir results \\\n        --lama_config lama/configs/prediction/default.yaml \\\n        --lama_ckpt big-lama \n    \"\"\"\n    parser = argparse.ArgumentParser()\n    setup_args(parser)\n    args = parser.parse_args(sys.argv[1:])\n\n    img_stem = Path(args.input_img).stem\n    mask_ps = sorted(glob.glob(args.input_mask_glob))\n    out_dir = Path(args.output_dir) / img_stem\n    out_dir.mkdir(parents=True, exist_ok=True)\n\n    img = load_img_to_array(args.input_img)\n    for mask_p in mask_ps:\n        mask = load_img_to_array(mask_p)\n        img_inpainted_p = out_dir / f\"inpainted_with_{Path(mask_p).name}\"\n        img_inpainted = inpaint_img_with_lama(\n            img, mask, args.lama_config, args.lama_ckpt)\n        save_array_to_img(img_inpainted, img_inpainted_p)
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/lama_inpaint.py b/lama_inpaint.py
+--- a/lama_inpaint.py	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/lama_inpaint.py	(date 1681379204910)
+@@ -108,7 +108,7 @@
+     """Example usage:
+     python lama_inpaint.py \
+         --input_img FA_demo/FA1_dog.png \
+-        --input_mask_glob "results/FA1_dog/mask*.png" \
++        --input_mask_glob "results/FA1_dog/mask_*.png" \
+         --output_dir results \
+         --lama_config lama/configs/prediction/default.yaml \
+         --lama_ckpt big-lama 
+@@ -117,15 +117,18 @@
+     setup_args(parser)
+     args = parser.parse_args(sys.argv[1:])
+ 
++    img = load_img_to_array(args.input_img)
+     img_stem = Path(args.input_img).stem
++
+     mask_ps = sorted(glob.glob(args.input_mask_glob))
++
+     out_dir = Path(args.output_dir) / img_stem
+     out_dir.mkdir(parents=True, exist_ok=True)
+ 
+-    img = load_img_to_array(args.input_img)
+     for mask_p in mask_ps:
+         mask = load_img_to_array(mask_p)
+         img_inpainted_p = out_dir / f"inpainted_with_{Path(mask_p).name}"
++
+         img_inpainted = inpaint_img_with_lama(
+             img, mask, args.lama_config, args.lama_ckpt)
+         save_array_to_img(img_inpainted, img_inpainted_p)
+\ No newline at end of file
+Index: visual_mask_on_img.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import cv2\nimport sys\nimport argparse\nimport numpy as np\nfrom PIL import Image\nfrom pathlib import Path\nfrom matplotlib import pyplot as plt\nfrom typing import Any, Dict, List\nimport glob\n\nfrom utils import load_img_to_array, show_mask\n\n\ndef setup_args(parser):\n    parser.add_argument(\n        \"--input_img\", type=str, required=True,\n        help=\"Path to a single input img\",\n    )\n    parser.add_argument(\n        \"--input_mask_glob\", type=str, required=True,\n        help=\"Glob to input masks\",\n    )\n    parser.add_argument(\n        \"--output_dir\", type=str, required=True,\n        help=\"Output path to the directory with results.\",\n    )\n\nif __name__ == \"__main__\":\n    \"\"\"Example usage:\n    python visual_mask_on_img.py \\\n        --input_img FA_demo/FA1_dog.png \\\n        --input_mask_glob \"results/FA1_dog/mask*.png\" \\\n        --output_dir results\n    \"\"\"\n    parser = argparse.ArgumentParser()\n    setup_args(parser)\n    args = parser.parse_args(sys.argv[1:])\n\n    img = load_img_to_array(args.input_img)\n    img_stem = Path(args.input_img).stem\n\n    mask_ps = sorted(glob.glob(args.input_mask_glob))\n\n    out_dir = Path(args.output_dir) / img_stem\n    out_dir.mkdir(parents=True, exist_ok=True)\n\n    for mask_p in mask_ps:\n        mask = load_img_to_array(mask_p)\n        mask = mask.astype(np.uint8)\n\n        # path to the results\n        img_mask_p = out_dir / f\"with_{Path(mask_p).name}\"\n\n        # save the masked image\n        dpi = plt.rcParams['figure.dpi']\n        height, width = img.shape[:2]\n        plt.figure(figsize=(width/dpi/0.77, height/dpi/0.77))\n        plt.imshow(img)\n        plt.axis('off')\n        show_mask(plt.gca(), mask, random_color=False)\n        plt.savefig(img_mask_p, bbox_inches='tight', pad_inches=0)\n        plt.close()\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/visual_mask_on_img.py b/visual_mask_on_img.py
+--- a/visual_mask_on_img.py	(revision 22ef29e2176f13ba67a0ee8ad4a55b997703e045)
++++ b/visual_mask_on_img.py	(date 1681379204910)
+@@ -29,7 +29,7 @@
+     """Example usage:
+     python visual_mask_on_img.py \
+         --input_img FA_demo/FA1_dog.png \
+-        --input_mask_glob "results/FA1_dog/mask*.png" \
++        --input_mask_glob "results/FA1_dog/mask_*.png" \
+         --output_dir results
+     """
+     parser = argparse.ArgumentParser()

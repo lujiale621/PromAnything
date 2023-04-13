@@ -3,6 +3,8 @@ import sys
 import argparse
 import numpy as np
 from pathlib import Path
+
+from PIL import Image
 from matplotlib import pyplot as plt
 
 from sam_segment import predict_masks_with_sam
@@ -111,11 +113,17 @@ if __name__ == "__main__":
         show_mask(plt.gca(), mask, random_color=False)
         plt.savefig(img_mask_p, bbox_inches='tight', pad_inches=0)
         plt.close()
-
+    image=Image.fromarray(img)
+    image.show()
+    image.close()
     # inpaint the masked image
     for idx, mask in enumerate(masks):
+        mask_pil = Image.fromarray(mask)
+        mask_pil.show()
+        img_pil = Image.fromarray(img)
+        img_pil.show()
         mask_p = out_dir / f"mask_{idx}.png"
-        img_inpainted_p = out_dir / f"inpainted_with_{Path(mask_p).name}"
+        img_inpainted_p = out_dir / f"myinpainted_with_{Path(mask_p).name}"
         img_inpainted = inpaint_img_with_lama(
             img, mask, args.lama_config, args.lama_ckpt)
         save_array_to_img(img_inpainted, img_inpainted_p)

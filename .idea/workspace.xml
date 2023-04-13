@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1179e90a-e04b-428b-8535-c8f2939b2810" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/Inpaint-Anything.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample1_masked.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample1_point.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample1_result.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample2_masked.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample2_point.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample2_result.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample3_masked.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample3_point.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample3_result.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample4_masked.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample4_point.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/sample4_result.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_2023_4_13_下午5_48_[Changes]/shelved.patch" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/.asset/COCO.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/.asset/GD_GLIGEN.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/.asset/GD_SD.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/.asset/ODinW.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/.asset/arch.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/.asset/cats.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/.asset/hero_figure.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/LICENSE" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/demo/gradio_app.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/demo/inference_on_a_image.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino.egg-info/PKG-INFO" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino.egg-info/SOURCES.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino.egg-info/dependency_links.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino.egg-info/requires.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino.egg-info/top_level.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/datasets/transforms.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/backbone/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/backbone/backbone.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/backbone/position_encoding.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/backbone/swin_transformer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/bertwarper.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn/ms_deform_attn.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn/ms_deform_attn_cpu.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn/ms_deform_attn_cpu.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn/ms_deform_attn_cuda.cu" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn/ms_deform_attn_cuda.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn/ms_deform_im2col_cuda.cuh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/cuda_version.cu" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/csrc/vision.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/fuse_modules.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/groundingdino.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/ms_deform_attn.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/transformer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/transformer_vanilla.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/GroundingDINO/utils.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/models/registry.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/box_ops.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/get_tokenlizer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/inference.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/logger.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/misc.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/slconfig.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/slio.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/time_counter.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/utils.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/visualizer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/util/vl_utils.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/groundingdino/version.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/requirements.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GroundingDINO/setup.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/app_gradio.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/le_util/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/le_util/draw.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/static/myinpainted.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/static/myrepaceinpainted.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/test_image/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/test_image/my_image.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/prompt2anything.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/inpainted_with_mask_0.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/inpainted_with_mask_1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/inpainted_with_mask_2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/mask_0.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/mask_1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/mask_2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/myinpainted_with_mask_0.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/myinpainted_with_mask_1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/myinpainted_with_mask_2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/with_mask_0.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/with_mask_1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/with_mask_2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/dog/with_points.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/filled_with_mask_0.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/filled_with_mask_1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/filled_with_mask_2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/mask_0.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/mask_1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/mask_2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/with_mask_0.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/with_mask_1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/with_mask_2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/results/sample1/with_points.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lama/configs/places2-categories_157.txt" beforeDir="false" afterPath="$PROJECT_DIR$/lama/configs/places2-categories_157.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lama/saicinpainting/training/data/aug.py" beforeDir="false" afterPath="$PROJECT_DIR$/lama/saicinpainting/training/data/aug.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/remove_anything.py" beforeDir="false" afterPath="$PROJECT_DIR$/remove_anything.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="22ef29e2176f13ba67a0ee8ad4a55b997703e045" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="SOFT" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2OJcEC29JdtTAWaCG0Jlm8wNoe8" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/aimall/lujiale/Inpaint-Anything&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/app" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.app_gradio">
+    <configuration name="app_gradio" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Inpaint-Anything" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/app" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/app/app_gradio.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="fill_anything" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Inpaint-Anything" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/fill_anything.py" />
+      <option name="PARAMETERS" value="--input_img ./example/fill-anything/sample1.png --point_coords 750 500 --point_labels 1 --text_prompt &quot;a teddy bear on a bench&quot; --dilate_kernel_size 50 --output_dir ./results --sam_model_type &quot;vit_h&quot; --sam_ckpt $PROJECT_DIR$/../Grounded-Segment-Anything/model/sam_vit_h_4b8939.pth" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="prompt2anything" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Inpaint-Anything" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="$USER_HOME$/miniconda3/envs/ptanything/bin/python" />
+      <option name="SDK_NAME" value="ptanything" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/prompt2anything.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="remove_anything" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Inpaint-Anything" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="$USER_HOME$/miniconda3/envs/ptanything/bin/python" />
+      <option name="SDK_NAME" value="ptanything" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/remove_anything.py" />
+      <option name="PARAMETERS" value="--input_img ./example/remove-anything/dog.jpg --point_coords 200 450 --point_labels 1 --dilate_kernel_size 15 --output_dir ./results --sam_model_type &quot;vit_h&quot; --sam_ckpt $PROJECT_DIR$/../Grounded-Segment-Anything/model/sam_vit_h_4b8939.pth --lama_config ./lama/configs/prediction/default.yaml --lama_ckpt big-lama" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="stable_diffusion_inpaint" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Inpaint-Anything" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/stable_diffusion_inpaint.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.app_gradio" />
+      <item itemvalue="Python.prompt2anything" />
+      <item itemvalue="Python.fill_anything" />
+      <item itemvalue="Python.remove_anything" />
+      <item itemvalue="Python.stable_diffusion_inpaint" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.app_gradio" />
+        <item itemvalue="Python.fill_anything" />
+        <item itemvalue="Python.prompt2anything" />
+        <item itemvalue="Python.remove_anything" />
+        <item itemvalue="Python.stable_diffusion_inpaint" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ef9e53d7-1dd4-4cad-9e02-06f878e70b60" name="Changes" comment="" />
+      <created>1681282011581</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1681282011581</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/stable_diffusion_inpaint.py</url>
+          <line>32</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/remove_anything.py</url>
+          <line>127</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/remove_anything.py</url>
+          <line>84</line>
+          <option name="timeStamp" value="21" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/remove_anything.py</url>
+          <line>88</line>
+          <option name="timeStamp" value="24" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/prompt2anything.py</url>
+          <line>152</line>
+          <option name="timeStamp" value="33" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/prompt2anything.py</url>
+          <line>55</line>
+          <option name="timeStamp" value="42" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

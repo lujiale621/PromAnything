@@ -10,3 +10,7 @@ __pycache__/
 
 # tmp
 ~*
+#big-lama
+big-lama/
+#model
+model/
