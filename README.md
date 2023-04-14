@@ -30,13 +30,10 @@ pip install accelerate
 hugface下载模型
 你可以在conda环境中使用以下命令来安装git lfs：
 
-```
 conda install -c conda-forge git-lfs
-```
 git lfs install
 这将从conda-forge channel安装git lfs。 安装完成后，可以通过运行以下命令来验证是否成功安装了git lfs：
 git lfs version
-```
 nohup CUDA_VISIBLE_DEVICES=3 python app/app_gradio.py &>/dev/null &
 
 ```
