@@ -36,7 +36,7 @@ CUDA_VISIBLE_DEVICES=3 python app/app_gradio.py
 - [Segment Anything](https://github.com/facebookresearch/segment-anything)
 - [LaMa](https://github.com/advimman/lama)
 - [Stable Diffusion](https://github.com/CompVis/stable-diffusion)
--[GroundingDINO](https://github.com/IDEA-Research/GroundingDINO)
+- [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO)
 
 
 
